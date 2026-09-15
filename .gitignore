@@ -1,0 +1,33 @@
+## Build
+bin/
+obj/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rtifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vs/
+.vs/
+
+## Publish / installer output
+publish/
+installer/output/
+installer/redist/*.exe
+installer/redist/*.msi
+
+## Local overrides (never commit machine-specific URLs/secrets)
+**/appsettings.Local.json
+
+## WebView2 / runtime data
+**/EBWebView/
+*.log
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store

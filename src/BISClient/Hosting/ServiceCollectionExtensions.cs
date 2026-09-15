@@ -1,0 +1,34 @@
+using BISClient.Configuration;
+using BISClient.Services;
+using BISClient.Services.Native;
+using BISClient.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace BISClient.Hosting;
+
+internal static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddBisClient(this IServiceCollection services, AppSettings settings)
+    {
+        services.AddSingleton(settings);
+        services.AddSingleton<IWebViewEnvironmentService, WebViewEnvironmentService>();
+        services.AddSingleton<INavigationGuard, NavigationGuard>();
+        services.AddSingleton<IDownloadService, DownloadService>();
+        services.AddSingleton<IWindowStateService, WindowStateService>();
+        services.AddSingleton<IPrinterService, NullPrinterService>();
+        services.AddSingleton<IScannerService, NullScannerService>();
+        services.AddSingleton<INativeMessageBroker, NativeMessageBroker>();
+        services.AddSingleton<TraySession>();
+        services.AddSingleton<TrayIconService>();
+        services.AddSingleton<ITrayIconService>(sp => sp.GetRequiredService<TrayIconService>());
+        services.AddSingleton<IWindowsToastService, WindowsToastService>();
+        services.AddSingleton<NotificationNavigationService>();
+        services.AddTransient<WebViewTabSession>();
+        services.AddTransient<BrowserTabViewModel>();
+        services.AddSingleton<TabManager>();
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainWindow>();
+        services.AddHostedService<BisNotificationPoller>();
+        return services;
+    }
+}

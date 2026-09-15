@@ -1,0 +1,11 @@
+{
+  "BisClient": {
+    "BisUrl": "http://localhost:5000/",
+    "AllowedHosts": [
+      "localhost",
+      "127.0.0.1"
+    ],
+    "DevelopmentMode": true,
+    "EnableDeveloperTools": true
+  }
+}
