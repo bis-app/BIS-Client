@@ -25,6 +25,8 @@ public sealed class TraySession
 
     public event EventHandler? ExitRequested;
 
+    public event EventHandler? Restored;
+
     public void NotifyWindowReady()
     {
         _windowReady = true;
@@ -38,7 +40,15 @@ public sealed class TraySession
 
     public void NotifyHidden() => IsInTray = true;
 
-    public void NotifyRestored() => IsInTray = false;
+    public void NotifyRestored()
+    {
+        var wasInTray = IsInTray;
+        IsInTray = false;
+        if (wasInTray)
+        {
+            Restored?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     public void RequestRestore(string? url = null)
     {

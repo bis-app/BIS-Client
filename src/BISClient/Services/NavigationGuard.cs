@@ -12,6 +12,8 @@ public interface INavigationGuard
 
 public sealed class NavigationGuard : INavigationGuard
 {
+    public const string PdfPreviewHost = "bisclient-pdf.localhost";
+
     private readonly AppSettings _settings;
     private readonly ILogger<NavigationGuard> _logger;
 
@@ -45,6 +47,16 @@ public sealed class NavigationGuard : INavigationGuard
             return uri.AbsolutePath is "blank" or "srcdoc" || uri.OriginalString.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase);
         }
 
+        if (uri.Scheme.Equals("blob", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (uri.Scheme.Equals("data", StringComparison.OrdinalIgnoreCase))
+        {
+            return uri.OriginalString.StartsWith("data:application/pdf", StringComparison.OrdinalIgnoreCase);
+        }
+
         if (!uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
             && !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
@@ -52,6 +64,11 @@ public sealed class NavigationGuard : INavigationGuard
         }
 
         var host = uri.IdnHost.Trim().TrimEnd('.').ToLowerInvariant();
+        if (host.Equals(PdfPreviewHost, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         foreach (var pattern in _settings.AllowedHosts)
         {
             if (HostMatches(host, pattern))

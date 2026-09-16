@@ -23,6 +23,7 @@ public sealed class BisNotificationPoller : BackgroundService
     };
 
     private readonly AppSettings _settings;
+    private readonly IUserSettingsStore _userSettings;
     private readonly TraySession _traySession;
     private readonly TabManager _tabs;
     private readonly IWindowsToastService _toasts;
@@ -35,6 +36,7 @@ public sealed class BisNotificationPoller : BackgroundService
 
     public BisNotificationPoller(
         AppSettings settings,
+        IUserSettingsStore userSettings,
         TraySession traySession,
         TabManager tabs,
         IWindowsToastService toasts,
@@ -42,6 +44,7 @@ public sealed class BisNotificationPoller : BackgroundService
         ILogger<BisNotificationPoller> logger)
     {
         _settings = settings;
+        _userSettings = userSettings;
         _traySession = traySession;
         _tabs = tabs;
         _toasts = toasts;
@@ -56,7 +59,7 @@ public sealed class BisNotificationPoller : BackgroundService
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("BISClient/1.0");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ClientVersion.UserAgent);
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
@@ -101,6 +104,11 @@ public sealed class BisNotificationPoller : BackgroundService
 
     private async Task PollOnceAsync(CancellationToken cancellationToken)
     {
+        if (!_userSettings.Current.NotificationsEnabled)
+        {
+            return;
+        }
+
         try
         {
             var cookieHeader = await GetCookieHeaderAsync(cancellationToken);

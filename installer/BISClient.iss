@@ -1,12 +1,14 @@
 ; BIS Client – Inno Setup 6
 ; Ausgabe: installer\output\BISClientSetup.exe
+; Per-User-Installation ohne Administratorrechte
+;   Ziel: %LOCALAPPDATA%\Programs\BIS Client
 ;
 ; Vor dem Kompilieren:
 ;   dotnet publish src\BISClient\BISClient.csproj -c Release -p:PublishProfile=Win64
 ; Optional offline: MicrosoftEdgeWebView2Setup.exe nach installer\redist\ legen.
 
 #define MyAppName "BIS Client"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "BIS"
 #define MyAppExeName "BISClient.exe"
 #define MyAppId "{{B7E1C92A-4F18-4D6B-9A3C-8E5F21D47A90}}"
@@ -16,7 +18,7 @@ AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=output
@@ -25,10 +27,12 @@ SetupIconFile=..\src\BISClient\Resources\App.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
+CloseApplications=yes
+RestartApplications=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
 VersionInfoVersion={#MyAppVersion}
@@ -54,6 +58,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebView2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Microsoft WebView2 Runtime wird installiert..."; Flags: waituntilterminated skipifdoesntexist; Check: not IsWebView2RuntimeInstalled
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifnotsilent
 
 [Code]
 var

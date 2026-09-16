@@ -16,6 +16,18 @@ internal static class LogUrl
             return "(ungueltig)";
         }
 
+        if (parsed.Scheme.Equals("data", StringComparison.OrdinalIgnoreCase))
+        {
+            return "data:";
+        }
+
+        if (!parsed.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            && !parsed.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            var opaque = parsed.GetLeftPart(UriPartial.Path);
+            return string.IsNullOrWhiteSpace(opaque) ? parsed.Scheme : opaque;
+        }
+
         var builder = new StringBuilder();
         builder.Append(parsed.Scheme);
         builder.Append("://");

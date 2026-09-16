@@ -32,6 +32,12 @@ public sealed class AppSettings
 
     public int NotificationPollIntervalSeconds { get; set; } = 30;
 
+    public bool UpdateCheckEnabled { get; set; } = true;
+
+    public string UpdateManifestUrl { get; set; } = string.Empty;
+
+    public int UpdateCheckIntervalHours { get; set; } = 24;
+
     public bool AreDevToolsEnabled => DevelopmentMode && EnableDeveloperTools;
 
     public bool TrayNotificationsEnabled => MinimizeToTray && !KioskMode;
@@ -46,9 +52,14 @@ public sealed class AppSettings
 
     public string ActivationRequestFile { get; private set; } = string.Empty;
 
+    public string UserSettingsFile { get; private set; } = string.Empty;
+
+    public string PdfPreviewFolder { get; private set; } = string.Empty;
+
     public void Normalize()
     {
         BisUrl = (BisUrl ?? string.Empty).Trim();
+        UpdateManifestUrl = (UpdateManifestUrl ?? string.Empty).Trim();
         UserDataFolder = PathExpander.Expand(UserDataFolder);
         LogDirectory = PathExpander.Expand(LogDirectory);
         DownloadFolder = PathExpander.Expand(DownloadFolder);
@@ -62,15 +73,27 @@ public sealed class AppSettings
             NotificationPollIntervalSeconds = 300;
         }
 
+        if (UpdateCheckIntervalHours < 1)
+        {
+            UpdateCheckIntervalHours = 1;
+        }
+        else if (UpdateCheckIntervalHours > 168)
+        {
+            UpdateCheckIntervalHours = 168;
+        }
+
         AppDataRoot = UserDataFolder;
         WebViewUserDataFolder = Path.Combine(AppDataRoot, "WebView2");
         WindowStateFile = Path.Combine(AppDataRoot, "window.json");
         ShownNotificationsFile = Path.Combine(AppDataRoot, "shown-notifications.json");
         ActivationRequestFile = Path.Combine(AppDataRoot, "activate.json");
+        UserSettingsFile = Path.Combine(AppDataRoot, "user-settings.json");
+        PdfPreviewFolder = Path.Combine(AppDataRoot, "PdfPreview");
 
         Directory.CreateDirectory(AppDataRoot);
         Directory.CreateDirectory(WebViewUserDataFolder);
         Directory.CreateDirectory(LogDirectory);
+        Directory.CreateDirectory(PdfPreviewFolder);
 
         AllowedHosts ??= [];
         AllowedHosts = AllowedHosts

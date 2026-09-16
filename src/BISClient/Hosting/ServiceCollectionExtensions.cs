@@ -13,6 +13,12 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton(settings);
         services.AddSingleton<IWebViewEnvironmentService, WebViewEnvironmentService>();
         services.AddSingleton<INavigationGuard, NavigationGuard>();
+        services.AddSingleton<IExternalBrowserLauncher, ExternalBrowserLauncher>();
+        services.AddSingleton<IUserSettingsStore, UserSettingsStore>();
+        services.AddSingleton<IImportUploadService, ImportUploadService>();
+        services.AddTransient<SettingsViewModel>();
+        services.AddTransient<SettingsWindow>();
+        services.AddSingleton<ISettingsDialogService, SettingsDialogService>();
         services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IWindowStateService, WindowStateService>();
         services.AddSingleton<IPrinterService, NullPrinterService>();
@@ -26,9 +32,12 @@ internal static class ServiceCollectionExtensions
         services.AddTransient<WebViewTabSession>();
         services.AddTransient<BrowserTabViewModel>();
         services.AddSingleton<TabManager>();
+        services.AddSingleton<AppUpdateState>();
+        services.AddSingleton<IAppUpdateService, AppUpdateService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddHostedService<BisNotificationPoller>();
+        services.AddHostedService<AppUpdateChecker>();
         return services;
     }
 }

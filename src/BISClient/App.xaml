@@ -9,6 +9,8 @@
         <SolidColorBrush x:Key="InactiveTabBrush" Color="#244556" />
         <SolidColorBrush x:Key="ChromeTextBrush" Color="White" />
         <SolidColorBrush x:Key="ChromeDisabledBrush" Color="#6A8A9A" />
+        <SolidColorBrush x:Key="UpdateBannerBrush" Color="#1F5C4A" />
+        <SolidColorBrush x:Key="UpdateBannerButtonBrush" Color="#2E8A6E" />
 
         <converters:BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <converters:BooleanToVisibilityConverter x:Key="BoolToHidden" UseHidden="True" />

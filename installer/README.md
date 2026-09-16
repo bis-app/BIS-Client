@@ -2,6 +2,10 @@
 
 Inno-Setup-Skript für die Firmeninstallation des **BIS Client**.
 
+Das Setup ist eine **Per-User-Installation** und benötigt **keine Administratorrechte** (kein UAC). Installiert wird nach `%LOCALAPPDATA%\Programs\BIS Client` (typisch `C:\Users\<Benutzer>\AppData\Local\Programs\BIS Client`). Startmenü- und Desktopverknüpfung gelten nur für den angemeldeten Benutzer. WebView2 wird bei Bedarf ebenfalls ohne Elevation (per-user) nachinstalliert.
+
+Falls zuvor eine Maschineninstallation nach `Program Files` existiert, diese zuerst deinstallieren, sonst liegen zwei Kopien parallel.
+
 ## Voraussetzungen
 
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`ISCC.exe`)
@@ -49,3 +53,37 @@ Der BIS Client prüft die Runtime zusätzlich beim Start und zeigt sonst eine ve
 - Maschinen- oder standortspezifische Werte gehören nach `appsettings.Local.json` (wird vom Setup nicht mitgeliefert).
 
 Vorlage: `src\BISClient\appsettings.Local.json.example`
+
+## Client-Update veröffentlichen
+
+Der installierte Client prüft `https://<BIS>/client/version.json` und lädt bei neuer Version `BISClientSetup.exe` herunter.
+
+1. Version an **drei** Stellen setzen (gleiche Nummer):
+   - `src\BISClient\BISClient.csproj` → `<Version>`
+   - `installer\BISClient.iss` → `#define MyAppVersion`
+   - `version.json` auf dem Server → `"version"`
+2. Publish und Setup wie oben bauen.
+3. SHA-256 der Setup-Datei erzeugen:
+
+```bat
+certutil -hashfile installer\output\BISClientSetup.exe SHA256
+```
+
+4. Beide Dateien in den Release-Ordner des BIS-Servers kopieren (`CLIENT_RELEASE_FOLDER`, Standard `{UPLOAD_BASE_FOLDER}/Client`):
+
+- `BISClientSetup.exe`
+- `version.json`
+
+Beispiel `version.json`:
+
+```json
+{
+  "version": "1.1.0",
+  "minVersion": "1.0.0",
+  "downloadUrl": "/client/BISClientSetup.exe",
+  "sha256": "hier-den-hash-aus-certutil-einfuegen",
+  "notes": "Fehlerbehebung und Stabilität"
+}
+```
+
+`sha256` ist 64 Hex-Zeichen, ohne Leerzeichen. Nginx sollte `/client/` aus diesem Ordner ausliefern (`deployment/vps/nginx_bis.conf`).

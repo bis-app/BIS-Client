@@ -16,7 +16,7 @@
     <AssemblyTitle>BIS Client</AssemblyTitle>
     <Description>Windows-Desktop-Client für das Betriebsinformationssystem (BIS)</Description>
     <Company>BIS</Company>
-    <Version>1.0.0</Version>
+    <Version>1.1.1</Version>
     <NeutralLanguage>de-DE</NeutralLanguage>
     <ForceDesignerDpiUnaware>false</ForceDesignerDpiUnaware>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -41,6 +41,7 @@
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Update="appsettings.Local.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
