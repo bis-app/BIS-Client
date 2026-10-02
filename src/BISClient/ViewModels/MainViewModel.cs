@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IUserSettingsStore _userSettings;
     private readonly IImportUploadService _uploads;
     private readonly ISettingsDialogService _settingsDialog;
+    private readonly SemaphoreSlim _uploadGate = new(1, 1);
 
     public MainViewModel(
         TabManager tabs,
@@ -142,10 +143,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        await UploadShellFilesAsync(dialog.FileNames, cancellationToken);
+    }
+
+    public Task UploadShellFilesAsync(IReadOnlyList<string> filePaths, CancellationToken cancellationToken = default)
+    {
+        if (filePaths.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            return dispatcher.InvokeAsync(() => UploadShellFilesAsync(filePaths, cancellationToken)).Task.Unwrap();
+        }
+
+        return UploadShellFilesCoreAsync(filePaths, cancellationToken);
+    }
+
+    private async Task UploadShellFilesCoreAsync(IReadOnlyList<string> filePaths, CancellationToken cancellationToken)
+    {
+        await _uploadGate.WaitAsync(cancellationToken);
         IsUploading = true;
         try
         {
-            var summary = await _uploads.UploadAsync(dialog.FileNames, cancellationToken);
+            var summary = await _uploads.UploadAsync(filePaths, cancellationToken);
             var icon = summary.Failed == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning;
             MessageBox.Show(
                 Application.Current?.MainWindow,
@@ -169,6 +192,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         finally
         {
             IsUploading = false;
+            _uploadGate.Release();
         }
     }
 
@@ -229,6 +253,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Update.PropertyChanged -= OnUpdatePropertyChanged;
         _userSettings.Changed -= OnUserSettingsChanged;
         Tabs.Dispose();
+        _uploadGate.Dispose();
     }
 
     private void OnChromeStateChanged(object? sender, EventArgs e)

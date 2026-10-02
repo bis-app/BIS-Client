@@ -189,6 +189,7 @@ public sealed class WebViewTabSession : IDisposable
         core.FaviconChanged += OnFaviconChanged;
         core.HistoryChanged += OnHistoryChanged;
         core.DownloadStarting += OnDownloadStarting;
+        core.SaveAsUIShowing += OnSaveAsUIShowing;
         core.WebMessageReceived += OnWebMessageReceived;
         core.ProcessFailed += OnProcessFailed;
         core.ContextMenuRequested += OnContextMenuRequested;
@@ -204,6 +205,7 @@ public sealed class WebViewTabSession : IDisposable
         core.FaviconChanged -= OnFaviconChanged;
         core.HistoryChanged -= OnHistoryChanged;
         core.DownloadStarting -= OnDownloadStarting;
+        core.SaveAsUIShowing -= OnSaveAsUIShowing;
         core.WebMessageReceived -= OnWebMessageReceived;
         core.ProcessFailed -= OnProcessFailed;
         core.ContextMenuRequested -= OnContextMenuRequested;
@@ -405,7 +407,10 @@ public sealed class WebViewTabSession : IDisposable
     private void OnHistoryChanged(object? sender, object e) => RefreshHistory();
 
     private void OnDownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
-        => _downloadService.HandleDownloadStarting(e, OpenPdfPreview);
+        => _downloadService.HandleDownloadStarting(e, OpenPdfPreview, _webView?.CoreWebView2?.Source);
+
+    private void OnSaveAsUIShowing(object? sender, CoreWebView2SaveAsUIShowingEventArgs e)
+        => _downloadService.HandleSaveAsUIShowing(e, _webView?.CoreWebView2?.Source);
 
     private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {

@@ -47,6 +47,12 @@ installer\redist\MicrosoftEdgeWebView2Setup.exe
 
 Der BIS Client prüft die Runtime zusätzlich beim Start und zeigt sonst eine verständliche Fehlermeldung.
 
+## Explorer-Upload („Senden an“ / „Teilen“)
+
+Nach `dotnet publish` liegen `BIS.BISClient.msix` und `BIS.Identity.cer` im Publish-Ordner und werden mitinstalliert. Das Setup legt das Zertifikat in den benutzereigenen Store `TrustedPeople`. Der Client registriert das Sparse-Paket erst, wenn ein Upload-Token gespeichert ist.
+
+Beim Deinstallieren werden die SendTo-Verknüpfung `BIS Import-Ordner.lnk` und das Appx-Paket `BIS.BISClient` entfernt.
+
 ## Konfiguration nach der Installation
 
 - `appsettings.json` im Installationsordner wird bei einem Upgrade **nicht** überschrieben, wenn sie bereits existiert.

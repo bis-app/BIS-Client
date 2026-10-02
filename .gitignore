@@ -20,6 +20,10 @@ installer/output/
 installer/redist/*.exe
 installer/redist/*.msi
 
+## Identity / sparse package build
+packaging/identity/.keys/
+packaging/identity/staging/
+
 ## Local overrides (never commit machine-specific URLs/secrets)
 **/appsettings.Local.json
 

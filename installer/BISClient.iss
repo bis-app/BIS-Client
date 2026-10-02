@@ -8,7 +8,7 @@
 ; Optional offline: MicrosoftEdgeWebView2Setup.exe nach installer\redist\ legen.
 
 #define MyAppName "BIS Client"
-#define MyAppVersion "1.1.1"
+#define MyAppVersion "1.1.4"
 #define MyAppPublisher "BIS"
 #define MyAppExeName "BISClient.exe"
 #define MyAppId "{{B7E1C92A-4F18-4D6B-9A3C-8E5F21D47A90}}"
@@ -55,6 +55,12 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
+[UninstallDelete]
+Type: files; Name: "{userappdata}\Microsoft\Windows\SendTo\BIS Import-Ordner.lnk"
+
+[UninstallRun]
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -Name 'BIS.BISClient' | Remove-AppxPackage"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveIdentityPackage"
+
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebView2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Microsoft WebView2 Runtime wird installiert..."; Flags: waituntilterminated skipifdoesntexist; Check: not IsWebView2RuntimeInstalled
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
@@ -89,6 +95,21 @@ begin
   begin
     if (Version <> '') and (Version <> '0.0.0.0') then
       Result := True;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  if CurStep <> ssPostInstall then
+    exit;
+  if FileExists(ExpandConstant('{app}\BIS.Identity.cer')) then
+  begin
+    Exec(
+      ExpandConstant('{sys}\certutil.exe'),
+      '-user -f -addstore TrustedPeople "' + ExpandConstant('{app}\BIS.Identity.cer') + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
 end;
 

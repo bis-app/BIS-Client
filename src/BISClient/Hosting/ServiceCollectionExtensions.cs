@@ -16,6 +16,9 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IExternalBrowserLauncher, ExternalBrowserLauncher>();
         services.AddSingleton<IUserSettingsStore, UserSettingsStore>();
         services.AddSingleton<IImportUploadService, ImportUploadService>();
+        services.AddSingleton<ISendToShortcutService, SendToShortcutService>();
+        services.AddSingleton<IShareTargetRegistrationService, ShareTargetRegistrationService>();
+        services.AddSingleton<IExplorerUploadIntegration, ExplorerUploadIntegration>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SettingsWindow>();
         services.AddSingleton<ISettingsDialogService, SettingsDialogService>();

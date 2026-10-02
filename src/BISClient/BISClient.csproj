@@ -16,7 +16,7 @@
     <AssemblyTitle>BIS Client</AssemblyTitle>
     <Description>Windows-Desktop-Client für das Betriebsinformationssystem (BIS)</Description>
     <Company>BIS</Company>
-    <Version>1.1.1</Version>
+    <Version>1.1.4</Version>
     <NeutralLanguage>de-DE</NeutralLanguage>
     <ForceDesignerDpiUnaware>false</ForceDesignerDpiUnaware>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -34,6 +34,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.6584" PrivateAssets="all" GeneratePathProperty="true" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
@@ -53,5 +54,22 @@
     <Resource Include="Resources\App.ico" />
     <None Include="Resources\bis-client-icon.png" CopyToOutputDirectory="Never" />
   </ItemGroup>
+
+  <Target Name="BuildIdentityPackage" AfterTargets="Build" Condition="'$(MSBuildProjectName)' == 'BISClient'">
+    <PropertyGroup>
+      <IdentityBuildScript>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\packaging\identity\build.ps1'))</IdentityBuildScript>
+      <IdentitySdkBinDir>$([System.IO.Path]::Combine('$(PkgMicrosoft_Windows_SDK_BuildTools)', 'bin', '10.0.26100.0', 'x64'))</IdentitySdkBinDir>
+      <IdentityOutputDir>$(TargetDir.TrimEnd('\'))</IdentityOutputDir>
+    </PropertyGroup>
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(IdentityBuildScript)&quot; -OutputDir &quot;$(IdentityOutputDir)&quot; -Version $(Version) -SdkBinDir &quot;$(IdentitySdkBinDir)&quot;" />
+  </Target>
+
+  <Target Name="PublishIdentityPackage" AfterTargets="Publish">
+    <ItemGroup>
+      <IdentityPackageFiles Include="$(TargetDir)BIS.BISClient.msix" Condition="Exists('$(TargetDir)BIS.BISClient.msix')" />
+      <IdentityPackageFiles Include="$(TargetDir)BIS.Identity.cer" Condition="Exists('$(TargetDir)BIS.Identity.cer')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(IdentityPackageFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" Condition="'@(IdentityPackageFiles)' != ''" />
+  </Target>
 
 </Project>

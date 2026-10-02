@@ -58,7 +58,12 @@
                   IsChecked="{Binding NotificationsEnabled}"
                   Foreground="White"
                   FontSize="13"
-                  Margin="0,0,0,18" />
+                  Margin="0,0,0,6" />
+        <TextBlock Text="Windows-Hinweise erscheinen nur, wenn das Fenster geschlossen ist und der Client im Infobereich bleibt. Bei geöffnetem Fenster zeigt BIS die Toasts in der Web-Ansicht."
+                   Foreground="#9BB6C3"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,18" />
 
         <TextBlock Text="Upload-Token"
                    Foreground="White"
@@ -68,7 +73,7 @@
                      Height="32"
                      Padding="8,6"
                      FontSize="13" />
-        <TextBlock Text="Token im BIS-Profil unter „Datei-Upload per Kurzbefehl“ erzeugen und hier eintragen. Ist ein Token hinterlegt, erscheint der Upload-Button in der Tableiste."
+        <TextBlock Text="Token im BIS-Profil unter „Datei-Upload per Kurzbefehl“ erzeugen und hier eintragen. Ist ein Token hinterlegt, erscheinen der Upload-Button in der Tableiste sowie Einträge unter „Senden an“ und „Teilen“."
                    Foreground="#9BB6C3"
                    FontSize="12"
                    TextWrapping="Wrap"

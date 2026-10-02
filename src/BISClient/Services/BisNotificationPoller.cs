@@ -31,7 +31,6 @@ public sealed class BisNotificationPoller : BackgroundService
     private readonly ILogger<BisNotificationPoller> _logger;
     private readonly HttpClient _httpClient;
     private readonly ShownNotificationStore _shown;
-    private bool _firstPollCompleted;
     private bool _sessionExpiredHintShown;
 
     public BisNotificationPoller(
@@ -120,6 +119,7 @@ public sealed class BisNotificationPoller : BackgroundService
             var requestUri = BuildUnreadUri();
             if (requestUri is null)
             {
+                _logger.LogWarning("Benachrichtigungs-API-URL konnte nicht gebildet werden (BisUrl ungültig)");
                 return;
             }
 
@@ -130,13 +130,20 @@ public sealed class BisNotificationPoller : BackgroundService
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Found or HttpStatusCode.SeeOther
                 or HttpStatusCode.TemporaryRedirect or HttpStatusCode.MovedPermanently)
             {
+                _logger.LogInformation(
+                    "Benachrichtigungs-API antwortete {Status} für {Url} (Sitzung ungültig)",
+                    (int)response.StatusCode,
+                    requestUri);
                 NotifySessionExpiredIfNeeded();
                 return;
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogDebug("Benachrichtigungs-API antwortete {Status}", (int)response.StatusCode);
+                _logger.LogWarning(
+                    "Benachrichtigungs-API antwortete {Status} für {Url}",
+                    (int)response.StatusCode,
+                    requestUri);
                 return;
             }
 
@@ -144,37 +151,48 @@ public sealed class BisNotificationPoller : BackgroundService
             var data = JsonSerializer.Deserialize<UngelesenApiResponse>(payload, JsonOptions);
             if (data?.Benachrichtigungen is null)
             {
+                _logger.LogWarning(
+                    "Benachrichtigungs-API lieferte keine verwertbare Liste für {Url}",
+                    requestUri);
                 return;
             }
 
             _sessionExpiredHintShown = false;
 
             var ids = data.Benachrichtigungen.Select(static b => b.ID).ToList();
-            var isFirstPoll = !_firstPollCompleted;
-            _firstPollCompleted = true;
-
             var newItems = data.Benachrichtigungen
                 .Where(item => !_shown.Contains(item.ID))
                 .ToList();
 
-            _shown.Add(ids);
+            if (!_traySession.IsInTray)
+            {
+                _shown.Add(ids);
+                return;
+            }
 
-            if (isFirstPoll || !_traySession.IsInTray || newItems.Count == 0)
+            if (newItems.Count == 0)
             {
                 return;
             }
 
-            foreach (var item in newItems.Take(MaxToastsPerPoll))
+            var toShow = newItems.Take(MaxToastsPerPoll).ToList();
+            foreach (var item in toShow)
             {
                 _toasts.Show(item.Titel ?? "BIS", item.Nachricht ?? string.Empty, item.ZielUrl);
             }
+
+            _shown.Add(toShow.Select(static item => item.ID));
+            _logger.LogInformation(
+                "Windows-Toast angezeigt: {Shown} von {New} neuen Benachrichtigungen",
+                toShow.Count,
+                newItems.Count);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Benachrichtigungen konnten nicht abgerufen werden");
+            _logger.LogWarning(ex, "Benachrichtigungen konnten nicht abgerufen werden");
         }
     }
 
@@ -198,7 +216,7 @@ public sealed class BisNotificationPoller : BackgroundService
             return null;
         }
 
-        return new Uri(baseUri, "api/benachrichtigungen/ungelesen");
+        return new Uri(baseUri, "dashboard/api/benachrichtigungen/ungelesen");
     }
 
     private async Task<string?> GetCookieHeaderAsync(CancellationToken cancellationToken)
@@ -243,7 +261,7 @@ public sealed class BisNotificationPoller : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Cookies konnten nicht gelesen werden");
+                _logger.LogWarning(ex, "Cookies konnten nicht gelesen werden");
                 continue;
             }
 

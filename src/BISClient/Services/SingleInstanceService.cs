@@ -9,9 +9,9 @@ public interface ISingleInstanceService : IDisposable
 {
     bool TryAcquire();
 
-    void SignalExisting(string? url);
+    void SignalExisting(InstanceActivationRequest request);
 
-    void StartWatching(Action<string?> onActivate);
+    void StartWatching(Action<InstanceActivationRequest> onActivate);
 }
 
 public sealed class SingleInstanceService : ISingleInstanceService
@@ -29,7 +29,7 @@ public sealed class SingleInstanceService : ISingleInstanceService
     private Mutex? _mutex;
     private EventWaitHandle? _activateEvent;
     private RegisteredWaitHandle? _wait;
-    private Action<string?>? _onActivate;
+    private Action<InstanceActivationRequest>? _onActivate;
     private bool _disposed;
 
     public SingleInstanceService(AppSettings settings, ILogger<SingleInstanceService>? logger = null)
@@ -54,11 +54,13 @@ public sealed class SingleInstanceService : ISingleInstanceService
         return true;
     }
 
-    public void SignalExisting(string? url)
+    public void SignalExisting(InstanceActivationRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
-            WriteActivationRequest(url);
+            WriteActivationRequest(request);
             using var evt = EventWaitHandle.OpenExisting(EventName);
             evt.Set();
         }
@@ -68,7 +70,7 @@ public sealed class SingleInstanceService : ISingleInstanceService
         }
     }
 
-    public void StartWatching(Action<string?> onActivate)
+    public void StartWatching(Action<InstanceActivationRequest> onActivate)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _onActivate = onActivate;
@@ -112,10 +114,10 @@ public sealed class SingleInstanceService : ISingleInstanceService
 
     private void OnActivateSignaled(object? state, bool timedOut)
     {
-        var url = ReadActivationRequest();
+        var request = ReadActivationRequest();
         try
         {
-            _onActivate?.Invoke(url);
+            _onActivate?.Invoke(request);
         }
         catch (Exception ex)
         {
@@ -123,19 +125,25 @@ public sealed class SingleInstanceService : ISingleInstanceService
         }
     }
 
-    private void WriteActivationRequest(string? url)
+    private void WriteActivationRequest(InstanceActivationRequest request)
     {
-        var payload = new ActivationRequest { Url = string.IsNullOrWhiteSpace(url) ? null : url };
+        var payload = new InstanceActivationRequest
+        {
+            Url = string.IsNullOrWhiteSpace(request.Url) ? null : request.Url,
+            Files = request.Files
+                .Where(static path => !string.IsNullOrWhiteSpace(path))
+                .ToList()
+        };
         File.WriteAllText(_settings.ActivationRequestFile, JsonSerializer.Serialize(payload, JsonOptions));
     }
 
-    private string? ReadActivationRequest()
+    private InstanceActivationRequest ReadActivationRequest()
     {
         try
         {
             if (!File.Exists(_settings.ActivationRequestFile))
             {
-                return null;
+                return new InstanceActivationRequest();
             }
 
             var json = File.ReadAllText(_settings.ActivationRequestFile);
@@ -147,18 +155,21 @@ public sealed class SingleInstanceService : ISingleInstanceService
             {
             }
 
-            var payload = JsonSerializer.Deserialize<ActivationRequest>(json, JsonOptions);
-            return string.IsNullOrWhiteSpace(payload?.Url) ? null : payload.Url;
+            var payload = JsonSerializer.Deserialize<InstanceActivationRequest>(json, JsonOptions);
+            if (payload is null)
+            {
+                return new InstanceActivationRequest();
+            }
+
+            payload.Url = string.IsNullOrWhiteSpace(payload.Url) ? null : payload.Url;
+            payload.Files ??= [];
+            payload.Files = payload.Files.Where(static path => !string.IsNullOrWhiteSpace(path)).ToList();
+            return payload;
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Aktivierungsdatei konnte nicht gelesen werden");
-            return null;
+            return new InstanceActivationRequest();
         }
-    }
-
-    private sealed class ActivationRequest
-    {
-        public string? Url { get; set; }
     }
 }

@@ -4,6 +4,7 @@ using BISClient.Configuration;
 using BISClient.Hosting;
 using Microsoft.Extensions.Configuration;
 using BISClient.Services;
+using BISClient.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Toolkit.Uwp.Notifications;
@@ -43,11 +44,18 @@ public partial class App : Application
             return;
         }
 
+        var shareFiles = await ShareTargetActivation.CaptureFilesAsync();
+        var startupFiles = ShellFileArguments.Merge(ShellFileArguments.Parse(e.Args), shareFiles);
+
         _singleInstance = new SingleInstanceService(settings);
         if (!_singleInstance.TryAcquire())
         {
             ToastNotificationManagerCompat.OnActivated -= OnStartupToastActivated;
-            _singleInstance.SignalExisting(_startupToastUrl);
+            _singleInstance.SignalExisting(new InstanceActivationRequest
+            {
+                Url = _startupToastUrl,
+                Files = startupFiles
+            });
             _singleInstance.Dispose();
             _singleInstance = null;
             Shutdown(0);
@@ -114,13 +122,29 @@ public partial class App : Application
             Log.Information("WebView2 Runtime gefunden: {Version}", runtimeVersion);
 
             var window = _host.Services.GetRequiredService<MainWindow>();
+            var viewModel = _host.Services.GetRequiredService<MainViewModel>();
             window.Show();
 
             var traySession = _host.Services.GetRequiredService<TraySession>();
-            singleInstance.StartWatching(traySession.RequestRestore);
+            singleInstance.StartWatching(request =>
+            {
+                traySession.RequestRestore(request.Url);
+                if (request.Files.Count > 0)
+                {
+                    _ = viewModel.UploadShellFilesAsync(request.Files);
+                }
+            });
+
+            await _host.Services.GetRequiredService<IExplorerUploadIntegration>().StartAsync();
+
             if (!string.IsNullOrWhiteSpace(_startupToastUrl))
             {
                 traySession.RequestRestore(_startupToastUrl);
+            }
+
+            if (startupFiles.Count > 0)
+            {
+                _ = viewModel.UploadShellFilesAsync(startupFiles);
             }
         }
         catch (Exception ex)
