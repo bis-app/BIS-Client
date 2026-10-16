@@ -16,7 +16,7 @@
     <AssemblyTitle>BIS Client</AssemblyTitle>
     <Description>Windows-Desktop-Client für das Betriebsinformationssystem (BIS)</Description>
     <Company>BIS</Company>
-    <Version>1.1.4</Version>
+    <Version>1.1.5</Version>
     <NeutralLanguage>de-DE</NeutralLanguage>
     <ForceDesignerDpiUnaware>false</ForceDesignerDpiUnaware>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>

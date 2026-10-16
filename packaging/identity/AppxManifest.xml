@@ -36,7 +36,7 @@
       <uap:VisualElements
         DisplayName="BIS Client"
         Description="Windows-Desktop-Client für das Betriebsinformationssystem (BIS)"
-        BackgroundColor="#1B3A4B"
+        BackgroundColor="#1C2430"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png" />
       <Extensions>

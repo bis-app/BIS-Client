@@ -29,7 +29,7 @@ function Save-ResizedPng([string] $Source, [string] $Dest, [int] $Width, [int] $
                 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
                 $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
                 $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-                $g.Clear([System.Drawing.Color]::FromArgb(255, 27, 58, 75))
+                $g.Clear([System.Drawing.Color]::FromArgb(255, 28, 36, 48))
                 $g.DrawImage($src, 0, 0, $Width, $Height)
                 $dir = Split-Path $Dest -Parent
                 if (-not (Test-Path $dir)) {
