@@ -24,7 +24,17 @@ public partial class SettingsWindow : Window
         viewModel.UploadToken = UploadTokenBox.Password;
         try
         {
-            viewModel.Save();
+            if (!viewModel.TrySave(out var error))
+            {
+                MessageBox.Show(
+                    this,
+                    error ?? "Die Server-Adresse ist ungültig.",
+                    "BIS Client",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             DialogResult = true;
         }
         catch (Exception ex)

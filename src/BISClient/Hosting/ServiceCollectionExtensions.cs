@@ -23,6 +23,7 @@ internal static class ServiceCollectionExtensions
         services.AddTransient<SettingsWindow>();
         services.AddSingleton<ISettingsDialogService, SettingsDialogService>();
         services.AddSingleton<IDownloadService, DownloadService>();
+        services.AddSingleton<IOutlookMailService, OutlookMailService>();
         services.AddSingleton<IWindowStateService, WindowStateService>();
         services.AddSingleton<IPrinterService, NullPrinterService>();
         services.AddSingleton<IScannerService, NullScannerService>();

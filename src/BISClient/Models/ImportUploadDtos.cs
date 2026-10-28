@@ -30,9 +30,15 @@ public sealed class ImportUploadSummary
 
         if (Failed == 0)
         {
-            return Succeeded == 1
+            var text = Succeeded == 1
                 ? "1 Datei wurde im persönlichen Import-Ordner gespeichert."
                 : $"{Succeeded} Dateien wurden im persönlichen Import-Ordner gespeichert.";
+            if (Details.Count == 0)
+            {
+                return text;
+            }
+
+            return text + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine, Details);
         }
 
         var header = $"{Succeeded} von {Attempted} Dateien gespeichert.";

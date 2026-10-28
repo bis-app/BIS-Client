@@ -21,6 +21,9 @@ public interface IAppUpdateService
 
 public sealed class AppUpdateService : IAppUpdateService, IDisposable
 {
+    private const string DefaultManifestUrl =
+        "https://raw.githubusercontent.com/bis-app/BIS-Client/main/client-feed/version.json";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -53,7 +56,7 @@ public sealed class AppUpdateService : IAppUpdateService, IDisposable
     public async Task<AppUpdateInfo?> CheckAsync(CancellationToken cancellationToken)
     {
         var manifestUri = ResolveManifestUri();
-        if (manifestUri is null || !_navigationGuard.IsAllowed(manifestUri))
+        if (manifestUri is null || !IsManifestAllowed(manifestUri))
         {
             _logger.LogDebug("Update-Manifest-URL ist nicht erlaubt oder ungültig");
             return null;
@@ -88,7 +91,7 @@ public sealed class AppUpdateService : IAppUpdateService, IDisposable
         }
 
         var downloadUri = ResolveDownloadUri(manifestUri, dto.DownloadUrl);
-        if (downloadUri is null || !_navigationGuard.IsAllowed(downloadUri))
+        if (downloadUri is null || !IsDownloadAllowed(downloadUri, manifestUri))
         {
             _logger.LogWarning("Update-Download-URL ist nicht erlaubt: {Url}", LogUrl.Sanitize(dto.DownloadUrl));
             return null;
@@ -110,7 +113,8 @@ public sealed class AppUpdateService : IAppUpdateService, IDisposable
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        if (!_navigationGuard.IsAllowed(info.DownloadUri))
+        var manifestUri = ResolveManifestUri();
+        if (manifestUri is null || !IsDownloadAllowed(info.DownloadUri, manifestUri))
         {
             throw new InvalidOperationException("Die Download-Adresse ist nicht erlaubt.");
         }
@@ -210,18 +214,31 @@ public sealed class AppUpdateService : IAppUpdateService, IDisposable
     private Uri? ResolveManifestUri()
     {
         var configured = (_settings.UpdateManifestUrl ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(configured))
-        {
-            return Uri.TryCreate(configured, UriKind.Absolute, out var absolute) ? absolute : null;
-        }
-
-        if (!Uri.TryCreate(_settings.BisUrl, UriKind.Absolute, out var baseUri))
-        {
-            return null;
-        }
-
-        return new Uri(baseUri, "client/version.json");
+        var candidate = string.IsNullOrWhiteSpace(configured) ? DefaultManifestUrl : configured;
+        return Uri.TryCreate(candidate, UriKind.Absolute, out var absolute) ? absolute : null;
     }
+
+    private bool IsManifestAllowed(Uri manifestUri)
+        => IsHttp(manifestUri) && IsUpdateHostAllowed(manifestUri, manifestUri);
+
+    private bool IsDownloadAllowed(Uri downloadUri, Uri manifestUri)
+        => IsHttp(downloadUri)
+           && string.Equals(downloadUri.IdnHost, manifestUri.IdnHost, StringComparison.OrdinalIgnoreCase)
+           && IsUpdateHostAllowed(downloadUri, manifestUri);
+
+    private bool IsUpdateHostAllowed(Uri uri, Uri manifestUri)
+    {
+        if (_navigationGuard.IsAllowed(uri))
+        {
+            return true;
+        }
+
+        return string.Equals(uri.IdnHost, manifestUri.IdnHost, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsHttp(Uri uri)
+        => uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+           || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 
     private static Uri? ResolveDownloadUri(Uri manifestUri, string? downloadUrl)
     {

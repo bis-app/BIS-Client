@@ -47,6 +47,12 @@ public sealed partial class BrowserTabViewModel : ObservableObject, IDisposable
     private bool _isLoading;
 
     [ObservableProperty]
+    private bool _isPdfPreview;
+
+    [ObservableProperty]
+    private string? _pdfPreviewPath;
+
+    [ObservableProperty]
     private TabErrorKind _errorKind = TabErrorKind.None;
 
     [ObservableProperty]

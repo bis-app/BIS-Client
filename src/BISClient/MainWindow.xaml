@@ -3,18 +3,29 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:BISClient.Controls"
         xmlns:vm="clr-namespace:BISClient.ViewModels"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{Binding WindowTitle}"
         Height="800"
         Width="1280"
         MinWidth="800"
         MinHeight="500"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         Language="de-DE"
         Background="#0F2A36"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display"
         Closing="OnClosing"
         Closed="OnClosed"
+        StateChanged="OnStateChanged"
         PreviewKeyDown="OnPreviewKeyDown">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
     <Window.InputBindings>
         <KeyBinding Key="T" Modifiers="Control" Command="{Binding NewTabCommand}" />
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseActiveTabCommand}" />
@@ -30,6 +41,7 @@
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Margin" Value="2,6,2,0" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True" />
             <Setter Property="MinWidth" Value="120" />
             <Setter Property="MaxWidth" Value="220" />
             <Style.Triggers>
@@ -39,6 +51,7 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
+    <Border x:Name="WindowBorder" BorderBrush="#2A5166" BorderThickness="1">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -48,7 +61,8 @@
 
         <Border Grid.Row="0"
                 Background="{StaticResource ChromeBackgroundBrush}"
-                Padding="8,4,8,0">
+                Padding="8,4,8,0"
+                MouseLeftButtonDown="OnCaptionMouseLeftButtonDown">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Left"
                             Orientation="Horizontal"
@@ -78,19 +92,88 @@
                             Margin="8,0,0,4"
                             Visibility="{Binding ShowChromeActions, Converter={StaticResource BoolToVisibility}}">
                     <Button Style="{StaticResource ChromeButtonStyle}"
-                            Content="&#xE898;"
-                            ToolTip="Dateien in den Import-Ordner hochladen"
+                            Content="&#xE715;"
+                            ToolTip="Per Outlook senden"
+                            Command="{Binding SendActivePdfCommand}"
+                            Visibility="{Binding ShowPdfMailButton, Converter={StaticResource BoolToVisibility}}" />
+                    <Button x:Name="UploadButton"
+                            AllowDrop="True"
                             Command="{Binding UploadFilesCommand}"
-                            Visibility="{Binding ShowUploadButton, Converter={StaticResource BoolToVisibility}}" />
+                            Visibility="{Binding ShowUploadButton, Converter={StaticResource BoolToVisibility}}"
+                            PreviewDragOver="OnUploadDragOver"
+                            DragLeave="OnUploadDragLeave"
+                            Drop="OnUploadDrop">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ChromeButtonStyle}">
+                                <Setter Property="ToolTip" Value="Dateien in den Import-Ordner hochladen. Dateien aus dem Explorer können hierher gezogen werden." />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsUploading}" Value="True">
+                                        <Setter Property="ToolTip" Value="Upload läuft …" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid Width="16" Height="16">
+                            <TextBlock Text="&#xE898;"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsUploading, Converter={StaticResource InverseCollapsed}}" />
+                            <Ellipse Width="14"
+                                     Height="14"
+                                     Stroke="White"
+                                     StrokeThickness="2"
+                                     StrokeDashArray="3 2"
+                                     StrokeStartLineCap="Round"
+                                     StrokeEndLineCap="Round"
+                                     RenderTransformOrigin="0.5,0.5"
+                                     Visibility="{Binding IsUploading, Converter={StaticResource BoolToVisibility}}">
+                                <Ellipse.RenderTransform>
+                                    <RotateTransform />
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle"
+                                                                 From="0"
+                                                                 To="360"
+                                                                 Duration="0:0:0.9" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+                        </Grid>
+                    </Button>
                     <Button Style="{StaticResource ChromeButtonStyle}"
                             Content="&#xE713;"
                             ToolTip="Einstellungen"
                             Command="{Binding OpenSettingsCommand}" />
+                    <Button x:Name="MinimizeButton"
+                            Style="{StaticResource ChromeButtonStyle}"
+                            Content="&#xE921;"
+                            ToolTip="Minimieren"
+                            Click="OnMinimizeClick" />
+                    <Button x:Name="MaximizeButton"
+                            Style="{StaticResource ChromeButtonStyle}"
+                            Content="&#xE922;"
+                            ToolTip="Maximieren"
+                            Click="OnMaximizeClick" />
+                    <Button x:Name="CloseButton"
+                            Style="{StaticResource ChromeButtonStyle}"
+                            Content="&#xE8BB;"
+                            ToolTip="Schließen"
+                            Click="OnCloseClick" />
                 </StackPanel>
 
                 <ScrollViewer VerticalScrollBarVisibility="Disabled"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalAlignment="Bottom">
+                    <ScrollViewer.Resources>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+                            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+                        </Style>
+                    </ScrollViewer.Resources>
                     <ItemsControl ItemsSource="{Binding Tabs.Tabs}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -218,4 +301,5 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
     </Grid>
+    </Border>
 </Window>

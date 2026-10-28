@@ -15,6 +15,8 @@ public interface IDownloadService
         string? currentSource);
 
     void HandleSaveAsUIShowing(CoreWebView2SaveAsUIShowingEventArgs args, string? currentSource);
+
+    bool TryGetPreviewFile(string? uri, out string localPath);
 }
 
 public sealed class DownloadService : IDownloadService
@@ -62,6 +64,9 @@ public sealed class DownloadService : IDownloadService
 
         SaveToDownloadFolder(args, fileName, source);
     }
+
+    public bool TryGetPreviewFile(string? uri, out string localPath)
+        => TryResolvePreviewFile(uri, out localPath, out _);
 
     public void HandleSaveAsUIShowing(CoreWebView2SaveAsUIShowingEventArgs args, string? currentSource)
     {

@@ -6,5 +6,9 @@ public sealed class UserSettings
 
     public string UploadToken { get; init; } = string.Empty;
 
+    public string ServerUrl { get; init; } = string.Empty;
+
+    public bool DeleteUploadedFiles { get; init; }
+
     public bool HasUploadToken => !string.IsNullOrWhiteSpace(UploadToken);
 }

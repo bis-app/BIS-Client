@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IUserSettingsStore _userSettings;
     private readonly IImportUploadService _uploads;
     private readonly ISettingsDialogService _settingsDialog;
+    private readonly IOutlookMailService _outlookMail;
     private readonly SemaphoreSlim _uploadGate = new(1, 1);
 
     public MainViewModel(
@@ -25,7 +26,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         TraySession tray,
         IUserSettingsStore userSettings,
         IImportUploadService uploads,
-        ISettingsDialogService settingsDialog)
+        ISettingsDialogService settingsDialog,
+        IOutlookMailService outlookMail)
     {
         Tabs = tabs;
         _settings = settings;
@@ -35,6 +37,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _userSettings = userSettings;
         _uploads = uploads;
         _settingsDialog = settingsDialog;
+        _outlookMail = outlookMail;
         Tabs.ChromeStateChanged += OnChromeStateChanged;
         Update.PropertyChanged += OnUpdatePropertyChanged;
         _userSettings.Changed += OnUserSettingsChanged;
@@ -43,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (e.PropertyName == nameof(TabManager.ActiveTab))
             {
                 OnPropertyChanged(nameof(WindowTitle));
+                OnPropertyChanged(nameof(ShowPdfMailButton));
                 RefreshCommands();
             }
         };
@@ -71,6 +75,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public bool ShowChromeActions => !_settings.KioskMode;
 
     public bool ShowUploadButton => ShowChromeActions && _userSettings.Current.HasUploadToken;
+
+    public bool ShowPdfMailButton => ShowChromeActions && Tabs.ActiveTab?.IsPdfPreview == true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(UploadFilesCommand))]
@@ -121,10 +127,41 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void CloseActiveTab() => Tabs.CloseActiveTab();
 
+    [RelayCommand(CanExecute = nameof(CanSendActivePdf))]
+    private async Task SendActivePdf()
+    {
+        var path = Tabs.ActiveTab?.PdfPreviewPath;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var error = await _outlookMail.ShowAsync(new OutlookMailDraft { AttachmentPath = path });
+        if (error is null)
+        {
+            return;
+        }
+
+        MessageBox.Show(
+            Application.Current?.MainWindow,
+            error,
+            "BIS Client",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
+    private bool CanSendActivePdf()
+        => ShowPdfMailButton && !string.IsNullOrWhiteSpace(Tabs.ActiveTab?.PdfPreviewPath);
+
     [RelayCommand]
     private void OpenSettings()
     {
-        _settingsDialog.Show(Application.Current?.MainWindow);
+        var before = _settings.BisUrl;
+        if (_settingsDialog.Show(Application.Current?.MainWindow) == true
+            && !string.Equals(before, _settings.BisUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            Tabs.ReplaceWithHome();
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanUploadFiles))]
@@ -169,7 +206,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         try
         {
             var summary = await _uploads.UploadAsync(filePaths, cancellationToken);
-            var icon = summary.Failed == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning;
+            var icon = summary.Failed == 0 && summary.Details.Count == 0
+                ? MessageBoxImage.Information
+                : MessageBoxImage.Warning;
             MessageBox.Show(
                 Application.Current?.MainWindow,
                 summary.ToDisplayText(),
@@ -259,6 +298,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void OnChromeStateChanged(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(WindowTitle));
+        OnPropertyChanged(nameof(ShowPdfMailButton));
         RefreshCommands();
     }
 
@@ -275,6 +315,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         GoBackCommand.NotifyCanExecuteChanged();
         GoForwardCommand.NotifyCanExecuteChanged();
+        SendActivePdfCommand.NotifyCanExecuteChanged();
     }
 
     private void RefreshUpdateCommands()

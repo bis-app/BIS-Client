@@ -38,6 +38,7 @@ public sealed class UserSettingsStore : IUserSettingsStore
         _appSettings = appSettings;
         _logger = logger;
         _current = Load();
+        ApplyServerUrl(_current.ServerUrl);
     }
 
     public UserSettings Current
@@ -60,7 +61,9 @@ public sealed class UserSettingsStore : IUserSettingsStore
         var snapshot = new UserSettings
         {
             NotificationsEnabled = settings.NotificationsEnabled,
-            UploadToken = settings.UploadToken?.Trim() ?? string.Empty
+            UploadToken = settings.UploadToken?.Trim() ?? string.Empty,
+            ServerUrl = settings.ServerUrl?.Trim() ?? string.Empty,
+            DeleteUploadedFiles = settings.DeleteUploadedFiles
         };
 
         try
@@ -68,7 +71,9 @@ public sealed class UserSettingsStore : IUserSettingsStore
             var dto = new UserSettingsFileDto
             {
                 NotificationsEnabled = snapshot.NotificationsEnabled,
-                UploadTokenProtected = ProtectToken(snapshot.UploadToken)
+                UploadTokenProtected = ProtectToken(snapshot.UploadToken),
+                ServerUrl = string.IsNullOrWhiteSpace(snapshot.ServerUrl) ? null : snapshot.ServerUrl,
+                DeleteUploadedFiles = snapshot.DeleteUploadedFiles
             };
 
             Directory.CreateDirectory(Path.GetDirectoryName(_appSettings.UserSettingsFile)!);
@@ -85,7 +90,20 @@ public sealed class UserSettingsStore : IUserSettingsStore
             _current = snapshot;
         }
 
+        ApplyServerUrl(snapshot.ServerUrl);
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ApplyServerUrl(string? serverUrl)
+    {
+        if (!AppSettings.TryNormalizeServerUrl(serverUrl, out var normalized, out var error))
+        {
+            _logger.LogWarning("Gespeicherte Server-Adresse wird ignoriert: {Error}", error);
+            _appSettings.ApplyServerUrl(null);
+            return;
+        }
+
+        _appSettings.ApplyServerUrl(string.IsNullOrEmpty(normalized) ? null : normalized);
     }
 
     private UserSettings Load()
@@ -108,7 +126,9 @@ public sealed class UserSettingsStore : IUserSettingsStore
             return new UserSettings
             {
                 NotificationsEnabled = dto.NotificationsEnabled,
-                UploadToken = UnprotectToken(dto.UploadTokenProtected)
+                UploadToken = UnprotectToken(dto.UploadTokenProtected),
+                ServerUrl = dto.ServerUrl?.Trim() ?? string.Empty,
+                DeleteUploadedFiles = dto.DeleteUploadedFiles
             };
         }
         catch (Exception ex)
@@ -159,5 +179,9 @@ public sealed class UserSettingsStore : IUserSettingsStore
         public bool NotificationsEnabled { get; set; } = true;
 
         public string? UploadTokenProtected { get; set; }
+
+        public string? ServerUrl { get; set; }
+
+        public bool DeleteUploadedFiles { get; set; }
     }
 }

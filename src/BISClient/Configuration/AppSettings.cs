@@ -8,7 +8,13 @@ public sealed class AppSettings
 
     public string BisUrl { get; set; } = string.Empty;
 
+    public string ConfiguredBisUrl => _configuredBisUrl;
+
     public List<string> AllowedHosts { get; set; } = [];
+
+    private string _configuredBisUrl = string.Empty;
+
+    private List<string> _baseAllowedHosts = [];
 
     public bool KioskMode { get; set; }
 
@@ -111,6 +117,59 @@ public sealed class AppSettings
                 AllowedHosts.Add(host);
             }
         }
+
+        _configuredBisUrl = BisUrl;
+        _baseAllowedHosts = AllowedHosts.ToList();
+    }
+
+    public static bool TryNormalizeServerUrl(string? value, out string normalized, out string? error)
+    {
+        normalized = string.Empty;
+        error = null;
+        var trimmed = (value ?? string.Empty).Trim();
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || string.IsNullOrWhiteSpace(uri.IdnHost))
+        {
+            error = "Die Server-Adresse muss eine vollständige http- oder https-Adresse sein.";
+            return false;
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Fragment = string.Empty,
+            Query = string.Empty
+        };
+        var text = builder.Uri.AbsoluteUri;
+        if (!text.EndsWith('/'))
+        {
+            text += "/";
+        }
+
+        normalized = text;
+        return true;
+    }
+
+    public void ApplyServerUrl(string? normalized)
+    {
+        BisUrl = string.IsNullOrWhiteSpace(normalized) ? _configuredBisUrl : normalized.Trim();
+        var hosts = new List<string>(_baseAllowedHosts);
+        if (Uri.TryCreate(BisUrl, UriKind.Absolute, out var bisUri)
+            && !string.IsNullOrWhiteSpace(bisUri.IdnHost))
+        {
+            var host = bisUri.IdnHost.ToLowerInvariant();
+            if (!hosts.Contains(host, StringComparer.OrdinalIgnoreCase))
+            {
+                hosts.Add(host);
+            }
+        }
+
+        AllowedHosts = hosts;
     }
 }
 

@@ -62,34 +62,16 @@ Vorlage: `src\BISClient\appsettings.Local.json.example`
 
 ## Client-Update veröffentlichen
 
-Der installierte Client prüft `https://<BIS>/client/version.json` und lädt bei neuer Version `BISClientSetup.exe` herunter.
+Neue Builds holen das Manifest von
 
-1. Version an **drei** Stellen setzen (gleiche Nummer):
-   - `src\BISClient\BISClient.csproj` → `<Version>`
-   - `installer\BISClient.iss` → `#define MyAppVersion`
-   - `version.json` auf dem Server → `"version"`
-2. Publish und Setup wie oben bauen.
-3. SHA-256 der Setup-Datei erzeugen:
+`https://raw.githubusercontent.com/bis-app/BIS-Client/main/client-feed/version.json`
 
-```bat
-certutil -hashfile installer\output\BISClientSetup.exe SHA256
-```
+und laden `BISClientSetup.exe` aus demselben Ordner. `downloadUrl` im Manifest ist relativ (`BISClientSetup.exe`), ohne führenden Schrägstrich. Ist `UpdateManifestUrl` gesetzt, gilt diese absolute Adresse statt des GitHub-Feeds.
 
-4. Beide Dateien in den Release-Ordner des BIS-Servers kopieren (`CLIENT_RELEASE_FOLDER`, Standard `{UPLOAD_BASE_FOLDER}/Client`):
+1. Dieselbe Version in `src\BISClient\BISClient.csproj` (`<Version>`) und `installer\BISClient.iss` (`#define MyAppVersion`) eintragen. Ohne Angabe übernimmt `@c-u` die Version aus dem Aufruf.
+2. Im Chat `@c-u` aufrufen. Der Skill prüft die Versionen, baut Publish und Setup, schreibt SHA-256 und `client-feed/version.json`, kopiert `BISClientSetup.exe` nach `client-feed/` und committet nur diesen Feed.
+3. Den Commit selbst nach `main` pushen. Erst danach sehen die Clients das Update. Raw-Inhalte von GitHub können einige Minuten verzögert ankommen.
 
-- `BISClientSetup.exe`
-- `version.json`
+Das Setup muss unter 100 MB bleiben, sonst lehnt GitHub den Push ab. Ab 50 MB weist das Skript darauf hin.
 
-Beispiel `version.json`:
-
-```json
-{
-  "version": "1.1.0",
-  "minVersion": "1.0.0",
-  "downloadUrl": "/client/BISClientSetup.exe",
-  "sha256": "hier-den-hash-aus-certutil-einfuegen",
-  "notes": "Fehlerbehebung und Stabilität"
-}
-```
-
-`sha256` ist 64 Hex-Zeichen, ohne Leerzeichen. Nginx sollte `/client/` aus diesem Ordner ausliefern (`deployment/vps/nginx_bis.conf`).
+Bereits installierte Clients der Version 1.1.6 prüfen noch `https://<BIS>/client/version.json`. Die erste Version mit dem GitHub-Fallback muss einmal über diesen Server oder eine lokale Installation ankommen. Danach reicht der Push auf `main`.

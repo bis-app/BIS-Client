@@ -6,6 +6,7 @@ using System.Text.Json;
 using BISClient.Configuration;
 using BISClient.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic.FileIO;
 
 namespace BISClient.Services;
 
@@ -110,6 +111,11 @@ public sealed class ImportUploadService : IImportUploadService, IDisposable
                 {
                     succeeded++;
                     _logger.LogInformation("Import-Upload gespeichert: {File}", name);
+                    if (_userSettings.Current.DeleteUploadedFiles)
+                    {
+                        TryMoveToRecycleBin(path, name, details);
+                    }
+
                     continue;
                 }
 
@@ -139,6 +145,24 @@ public sealed class ImportUploadService : IImportUploadService, IDisposable
     }
 
     public void Dispose() => _httpClient.Dispose();
+
+    private void TryMoveToRecycleBin(string path, string name, ICollection<string> details)
+    {
+        try
+        {
+            FileSystem.DeleteFile(
+                path,
+                UIOption.OnlyErrorDialogs,
+                RecycleOption.SendToRecycleBin,
+                UICancelOption.ThrowException);
+            _logger.LogInformation("Original nach Upload in den Papierkorb verschoben: {File}", name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Original konnte nicht in den Papierkorb verschoben werden: {File}", name);
+            details.Add($"{name}: gespeichert, das Original konnte nicht in den Papierkorb verschoben werden.");
+        }
+    }
 
     private static string? ValidateFile(string path, string name)
     {

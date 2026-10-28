@@ -255,6 +255,7 @@ public sealed class WebViewTabSession : IDisposable
             }
         }
 
+        UpdatePdfPreview(e.Uri);
         _logger.LogInformation("Navigation: {Url}", LogUrl.Sanitize(e.Uri));
     }
 
@@ -274,6 +275,7 @@ public sealed class WebViewTabSession : IDisposable
             _tab.IsLoading = false;
         }
 
+        UpdatePdfPreview(_webView?.CoreWebView2?.Source);
         RefreshHistory();
 
         if (_guardCancelled)
@@ -416,7 +418,13 @@ public sealed class WebViewTabSession : IDisposable
     {
         try
         {
-            await _nativeMessageBroker.HandleRawMessageAsync(e.TryGetWebMessageAsString());
+            await _nativeMessageBroker.HandleRawMessageAsync(
+                e.TryGetWebMessageAsString(),
+                new NativeMessageContext
+                {
+                    ActivePdfPath = _tab?.IsPdfPreview == true ? _tab.PdfPreviewPath : null,
+                    WebView = _webView?.CoreWebView2
+                });
         }
         catch (Exception ex)
         {
@@ -505,6 +513,26 @@ public sealed class WebViewTabSession : IDisposable
             keyTab => WebViewAccelerator.NextTab,
             _ => null
         };
+    }
+
+    private void UpdatePdfPreview(string? source)
+    {
+        if (_tab is null)
+        {
+            return;
+        }
+
+        if (_downloadService.TryGetPreviewFile(source, out var path))
+        {
+            _tab.IsPdfPreview = true;
+            _tab.PdfPreviewPath = path;
+            _tab.NotifyChromeChanged();
+            return;
+        }
+
+        _tab.IsPdfPreview = false;
+        _tab.PdfPreviewPath = null;
+        _tab.NotifyChromeChanged();
     }
 
     private void RefreshHistory()

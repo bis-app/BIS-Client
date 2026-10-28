@@ -60,6 +60,20 @@ public sealed class TabManager : ObservableObject, IDisposable
 
     public BrowserTabViewModel OpenHomeTab() => OpenTab(_settings.BisUrl);
 
+    public void ReplaceWithHome()
+    {
+        foreach (var tab in Tabs.ToArray())
+        {
+            Tabs.Remove(tab);
+            Unhook(tab);
+            tab.Dispose();
+            _logger.LogInformation("Tab geschlossen {TabId}", tab.Id);
+        }
+
+        ActiveTab = null;
+        OpenHomeTab();
+    }
+
     public void NavigateTo(string url)
     {
         var tab = ActiveTab ?? Tabs.FirstOrDefault();
