@@ -8,7 +8,7 @@
 ; Optional offline: MicrosoftEdgeWebView2Setup.exe nach installer\redist\ legen.
 
 #define MyAppName "BIS Client"
-#define MyAppVersion "1.1.7"
+#define MyAppVersion "1.1.8"
 #define MyAppPublisher "BIS"
 #define MyAppExeName "BISClient.exe"
 #define MyAppId "{{B7E1C92A-4F18-4D6B-9A3C-8E5F21D47A90}}"
