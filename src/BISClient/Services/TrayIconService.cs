@@ -10,6 +10,8 @@ namespace BISClient.Services;
 public interface ITrayIconService
 {
     void ShowBalloon(string title, string text);
+
+    void SetUnreadCount(int count);
 }
 
 public sealed class TrayIconService : ITrayIconService, IDisposable
@@ -82,6 +84,28 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
         }
 
         dispatcher.Invoke(Show);
+    }
+
+    public void SetUnreadCount(int count)
+    {
+        var icon = _notifyIcon;
+        if (icon is null)
+        {
+            return;
+        }
+
+        var text = count > 0 ? $"BIS Client – {count} ungelesen" : "BIS Client";
+
+        void Apply() => icon.Text = text;
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            Apply();
+            return;
+        }
+
+        dispatcher.Invoke(Apply);
     }
 
     public void Dispose()

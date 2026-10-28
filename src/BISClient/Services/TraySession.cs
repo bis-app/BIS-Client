@@ -27,6 +27,8 @@ public sealed class TraySession
 
     public event EventHandler? Restored;
 
+    public event EventHandler<int>? UnreadWhileHidden;
+
     public void NotifyWindowReady()
     {
         _windowReady = true;
@@ -48,6 +50,35 @@ public sealed class TraySession
         {
             Restored?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    public void ReportUnreadCount(int count)
+    {
+        if (!IsInTray)
+        {
+            return;
+        }
+
+        var unread = Math.Max(0, count);
+
+        void Invoke()
+        {
+            if (!IsInTray)
+            {
+                return;
+            }
+
+            UnreadWhileHidden?.Invoke(this, unread);
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            Invoke();
+            return;
+        }
+
+        dispatcher.Invoke(Invoke);
     }
 
     public void RequestRestore(string? url = null)

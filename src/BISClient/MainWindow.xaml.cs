@@ -20,10 +20,13 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly TraySession _traySession;
     private readonly TrayIconService _trayIcon;
+    private readonly TaskbarBadgeService _taskbarBadge;
     private readonly NotificationNavigationService _navigation;
     private ResizeMode _restoreResizeMode = ResizeMode.CanResize;
     private WindowState _restoreState = WindowState.Normal;
     private bool _isFullscreen;
+    private bool _attentionMinimized;
+    private bool _applyingAttention;
 
     public MainWindow(
         MainViewModel viewModel,
@@ -31,6 +34,7 @@ public partial class MainWindow : Window
         IWindowStateService windowStateService,
         TraySession traySession,
         TrayIconService trayIcon,
+        TaskbarBadgeService taskbarBadge,
         NotificationNavigationService navigation)
     {
         _viewModel = viewModel;
@@ -38,6 +42,7 @@ public partial class MainWindow : Window
         _windowStateService = windowStateService;
         _traySession = traySession;
         _trayIcon = trayIcon;
+        _taskbarBadge = taskbarBadge;
         _navigation = navigation;
 
         DataContext = viewModel;
@@ -57,6 +62,7 @@ public partial class MainWindow : Window
 
         _traySession.RestoreRequested += OnRestoreRequested;
         _traySession.ExitRequested += OnExitRequested;
+        _traySession.UnreadWhileHidden += OnUnreadWhileHidden;
         _trayIcon.Start();
         _traySession.NotifyWindowReady();
     }
@@ -70,7 +76,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        _windowStateService.Save(this);
+        if (!_attentionMinimized)
+        {
+            _windowStateService.Save(this);
+        }
         _viewModel.Dispose();
     }
 
@@ -78,12 +87,22 @@ public partial class MainWindow : Window
     {
         _traySession.RestoreRequested -= OnRestoreRequested;
         _traySession.ExitRequested -= OnExitRequested;
+        _traySession.UnreadWhileHidden -= OnUnreadWhileHidden;
+        ClearTaskbarAttention();
         _trayIcon.Dispose();
+        _taskbarBadge.Dispose();
     }
 
     private void HideToTray()
     {
-        _windowStateService.Save(this);
+        var keepSavedState = _attentionMinimized;
+        _attentionMinimized = false;
+        if (!keepSavedState)
+        {
+            _windowStateService.Save(this);
+        }
+
+        ClearTaskbarAttention();
         ShowInTaskbar = false;
         Hide();
         _traySession.NotifyHidden();
@@ -91,6 +110,9 @@ public partial class MainWindow : Window
 
     private void RestoreFromTray(string? url)
     {
+        _attentionMinimized = false;
+        ShowActivated = true;
+        ClearTaskbarAttention();
         ShowInTaskbar = true;
         if (!IsVisible)
         {
@@ -107,6 +129,90 @@ public partial class MainWindow : Window
         Topmost = false;
         _traySession.NotifyRestored();
         _navigation.Open(url);
+    }
+
+    private void OnUnreadWhileHidden(object? sender, int count)
+    {
+        if (count <= 0)
+        {
+            if (_attentionMinimized)
+            {
+                HideToTray();
+            }
+            else
+            {
+                ClearTaskbarAttention();
+            }
+
+            return;
+        }
+
+        ShowAttention(count);
+    }
+
+    private void ShowAttention(int count)
+    {
+        _applyingAttention = true;
+        try
+        {
+            _attentionMinimized = true;
+            ShowActivated = false;
+            ShowInTaskbar = true;
+            if (WindowState != WindowState.Minimized)
+            {
+                WindowState = WindowState.Minimized;
+            }
+
+            if (!IsVisible)
+            {
+                Show();
+            }
+
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            _trayIcon.SetUnreadCount(count);
+            _taskbarBadge.Show(hwnd, count);
+        }
+        finally
+        {
+            _applyingAttention = false;
+        }
+
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ContextIdle,
+            () => KeepAttentionMinimized(count));
+    }
+
+    private void KeepAttentionMinimized(int count)
+    {
+        if (!_attentionMinimized || _traySession.IsExiting || WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        _applyingAttention = true;
+        try
+        {
+            ShowActivated = false;
+            ShowInTaskbar = true;
+            WindowState = WindowState.Minimized;
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            _taskbarBadge.Show(hwnd, count);
+        }
+        finally
+        {
+            _applyingAttention = false;
+        }
+    }
+
+    private void ClearTaskbarAttention()
+    {
+        ShowActivated = true;
+        _trayIcon.SetUnreadCount(0);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            _taskbarBadge.Clear(hwnd);
+        }
     }
 
     private void OnRestoreRequested(object? sender, string? url) => RestoreFromTray(url);
@@ -253,6 +359,16 @@ public partial class MainWindow : Window
         {
             WindowBorder.BorderThickness = maximized ? new Thickness(0) : new Thickness(1);
         }
+
+        if (_applyingAttention || !_attentionMinimized || WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        _attentionMinimized = false;
+        ShowActivated = true;
+        ClearTaskbarAttention();
+        _traySession.NotifyRestored();
     }
 
     private void OnCaptionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

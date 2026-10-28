@@ -29,6 +29,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<IScannerService, NullScannerService>();
         services.AddSingleton<INativeMessageBroker, NativeMessageBroker>();
         services.AddSingleton<TraySession>();
+        services.AddSingleton<TaskbarBadgeService>();
         services.AddSingleton<TrayIconService>();
         services.AddSingleton<ITrayIconService>(sp => sp.GetRequiredService<TrayIconService>());
         services.AddSingleton<IWindowsToastService, WindowsToastService>();

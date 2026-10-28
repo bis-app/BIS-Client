@@ -170,6 +170,11 @@ public sealed class BisNotificationPoller : BackgroundService
                 return;
             }
 
+            var unread = data.AnzahlUngelesen > 0
+                ? data.AnzahlUngelesen
+                : data.Benachrichtigungen.Count;
+            _traySession.ReportUnreadCount(unread);
+
             if (newItems.Count == 0)
             {
                 return;
