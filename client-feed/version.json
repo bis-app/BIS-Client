@@ -1,0 +1,7 @@
+{
+  "version": "1.1.7",
+  "minVersion": "1.0.0",
+  "downloadUrl": "BISClientSetup.exe",
+  "sha256": "040fa40c49aaa6168b3c279c12f036d580b9b2dbf96095a51c1a8da6d7079801",
+  "notes": "Eigene Titelleiste, Server-Adresse in den Einstellungen, Outlook-Versand und Upload per Drag-and-Drop"
+}
